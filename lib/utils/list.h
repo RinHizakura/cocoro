@@ -89,6 +89,52 @@ static inline int list_empty(const struct list_head *head)
     return head->next == head;
 }
 
+/**
+ * list_splice_tail() - Add list nodes from a list to end of another list
+ * @list: pointer to the head of the list with the node entries
+ * @head: pointer to the head of the list
+ *
+ * All nodes from @list are added to to the end of the list of @head.
+ * It is similar to list_add_tail but for multiple nodes. The @list head is not
+ * modified and has to be initialized to be used as a valid list head/node
+ * again.
+ */
+static inline void list_splice_tail(struct list_head *list,
+                                    struct list_head *head)
+{
+    struct list_head *head_last = head->prev;
+    struct list_head *list_first = list->next;
+    struct list_head *list_last = list->prev;
+
+    if (list_empty(list))
+        return;
+
+    head->prev = list_last;
+    list_last->next = head;
+
+    list_first->prev = head_last;
+    head_last->next = list_first;
+}
+
+/**
+ * list_splice_tail_init() - Move list nodes from a list to end of another list
+ * @list: pointer to the head of the list with the node entries
+ * @head: pointer to the head of the list
+ *
+ * All nodes from @list are added to to the end of the list of @head.
+ * It is similar to list_add_tail but for multiple nodes.
+ *
+ * The @list head will not end up in an uninitialized state like when using
+ * list_splice. Instead the @list is initialized again to the an empty
+ * list/unlinked state.
+ */
+static inline void list_splice_tail_init(struct list_head *list,
+                                         struct list_head *head)
+{
+    list_splice_tail(list, head);
+    INIT_LIST_HEAD(list);
+}
+
 /* get the struct for this entry
  * @ptr:	the &struct list_head pointer.
  * @type:	the type of the struct this is embedded in.

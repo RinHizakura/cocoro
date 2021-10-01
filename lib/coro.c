@@ -141,28 +141,27 @@ static inline void run_active_coroutine()
         coroutine_switch(&sched.main_coro, coro);
 }
 
-static inline void swap_active_inactive()
+static inline int swap_active_inactive()
 {
-    struct cocoro_task *item, *tmp;
+    /* if there's no availible task in the active list, than move all
+     * tasks in the inactivte list to the active list */
+    if (list_empty(&sched.active))
+        list_splice_tail_init(&sched.inactive, &sched.active);
 
-    list_for_each_entry_safe(item, tmp, &sched.inactive, list)
-    {
-        list_del(&item->list);
-        list_add_tail(&item->list, &sched.active);
-    }
+    /* if there's still no task under the active list, the infinite loop for
+     * coroutine scheduler would be stopped */
+    if (list_empty(&sched.active))
+        return -1;
+
+    return 0;
 }
 
 void cocoro_run()
 {
     for (;;) {
         run_active_coroutine();
-        /* if there's no availible task in the active list, than swap the
-         * inactivte and active one */
-        if (list_empty(&sched.active)) {
-            if (list_empty(&sched.inactive))
-                break;
-            swap_active_inactive();
-        }
+        if (swap_active_inactive())
+            break;
     }
 }
 

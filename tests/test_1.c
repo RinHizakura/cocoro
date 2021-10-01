@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "coro.h"
+#include "lib/coro.h"
 
 static int flag1, flag2;
 

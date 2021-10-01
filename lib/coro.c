@@ -79,8 +79,7 @@ static struct cocoro_task *get_coroutine()
 void cocoro_init()
 {
     sched.next_coro_id = 0;
-
-    // sched.current = NULL;
+    sched.current = NULL;
 
     INIT_LIST_HEAD(&sched.idle);
     INIT_LIST_HEAD(&sched.active);

@@ -72,3 +72,10 @@ int coro_stack_alloc(struct coro_stack *stack, size_t size_bytes)
 
     return 0;
 }
+
+void coro_stack_free(struct coro_stack *stack)
+{
+    stack->ptr =
+        (void *) ((char *) stack->ptr - stack->size_bytes - get_page_size());
+    munmap(stack->ptr, stack->size_bytes + get_page_size());
+}

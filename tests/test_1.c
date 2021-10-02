@@ -43,5 +43,6 @@ int main()
     cocoro_add_task(task1, NULL);
     cocoro_add_task(task2, NULL);
     cocoro_run();
+    cocoro_exit();
     return 0;
 }

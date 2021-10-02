@@ -38,3 +38,9 @@ void event_cycle(struct event_loop *evloop, int ms /* in milliseconds */)
         fe->proc(fe->args);
     }
 }
+
+void event_loop_free(struct event_loop *evloop)
+{
+    free(evloop->array);
+    free(evloop->ev);
+}

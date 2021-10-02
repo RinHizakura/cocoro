@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 
 #include "coro.h"
@@ -171,4 +172,21 @@ void cocoro_yield()
     /* If the coroutine is yielded, move it to the inactive list */
     list_add_tail(&coro->list, &sched.inactive);
     coroutine_switch(sched.current, &sched.main_coro);
+}
+
+void cocoro_exit()
+{
+    assert(list_empty(&sched.active));
+    assert(list_empty(&sched.inactive));
+
+    struct cocoro_task *item, *tmp;
+
+    list_for_each_entry_safe(item, tmp, &sched.idle, list)
+    {
+        list_del(&item->list);
+        coro_stack_free(&item->stack);
+        free(item);
+    }
+
+    event_loop_free(&sched.evloop);
 }

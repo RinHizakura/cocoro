@@ -18,5 +18,6 @@ struct event_loop {
 
 void event_cycle(struct event_loop *evloop, int milliseconds);
 void event_loop_init(struct event_loop *evloop);
+void event_loop_free(struct event_loop *evloop);
 
 #endif

@@ -22,5 +22,5 @@ void coro_stack_init(struct context *ctx,
                      coro_routine routine,
                      void *args);
 int coro_stack_alloc(struct coro_stack *stack, size_t size_bytes);
-
+void coro_stack_free(struct coro_stack *stack);
 #endif

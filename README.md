@@ -8,11 +8,12 @@ Note: Only `x86_64` architecture is supported now.
 ## TODO List
 
 - [x] await and yield implementation
-- [ ] Event driven scheduler
-- [ ] Priority for different coroutine
+- [x] Event driven scheduler
+- [ ] Nested coroutine
 - [ ] ...more feature / general purpose interface
 
 ## Reference
 
 * [cserv](https://github.com/sysprog21/cserv)
 * [async.h](https://github.com/naasking/async.h)
+* [concurrent-programs/tinync](https://github.com/sysprog21/concurrent-programs/tree/master/tinync)

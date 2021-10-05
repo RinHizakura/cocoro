@@ -1,5 +1,10 @@
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include "coro.h"
 #include "event.h"
@@ -130,7 +135,6 @@ static inline struct cocoro_task *get_active_coroutine()
     coro = list_entry(sched.active.next, struct cocoro_task, list);
     list_del_init(&coro->list);
 
-
     return coro;
 }
 
@@ -161,9 +165,27 @@ void cocoro_run()
 {
     for (;;) {
         run_active_coroutine();
+        /* some task in the inactive list can be waked up as soon as posible if
+         * its blocking condition is event-driven */
+        sched.policy(&sched.evloop, 0);
         if (swap_active_inactive())
             break;
     }
+}
+
+int cocoro_set_nonblock(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0)
+        return -1;
+
+    if (flags & O_NONBLOCK)
+        return 0;
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+        return -1;
+
+    return 0;
 }
 
 void cocoro_yield()
@@ -173,6 +195,49 @@ void cocoro_yield()
     list_add_tail(&coro->list, &sched.inactive);
     coroutine_switch(sched.current, &sched.main_coro);
 }
+
+static void event_wakeup(void *args)
+{
+    struct cocoro_task *coro = args;
+    list_del_init(&coro->list);
+    list_add_tail(&coro->list, &sched.active);
+}
+
+#define __SC_DECL1(t1, a1) t1 a1
+#define __SC_DECL2(t2, a2, ...) t2 a2, __SC_DECL1(__VA_ARGS__)
+#define __SC_DECL3(t3, a3, ...) t3 a3, __SC_DECL2(__VA_ARGS__)
+
+#define __SC_CAST1(t1, a1) (t1) a1
+#define __SC_CAST2(t2, a2, ...) (t2) a2, __SC_CAST1(__VA_ARGS__)
+#define __SC_CAST3(t3, a3, ...) (t3) a3, __SC_CAST2(__VA_ARGS__)
+
+#define COCORO_SYSCALLx(x, name, event_flag, ...)                         \
+    ssize_t cocoro_##name(int fd, __SC_DECL##x(__VA_ARGS__))              \
+    {                                                                     \
+        ssize_t n;                                                        \
+        while ((n = name(fd, __SC_CAST##x(__VA_ARGS__))) < 0) {           \
+            if (EINTR == errno)                                           \
+                continue;                                                 \
+            if (!((EAGAIN == errno) || (EWOULDBLOCK == errno)))           \
+                return -1;                                                \
+            if (add_fd_event(&sched.evloop, fd, event_flag, event_wakeup, \
+                             sched.current))                              \
+                return -2;                                                \
+            cocoro_yield();                                               \
+            del_fd_event(&sched.evloop, fd, event_flag);                  \
+        }                                                                 \
+        return n;                                                         \
+    }
+
+#define COCORO_SYSCALL2(name, event_flag, ...) \
+    COCORO_SYSCALLx(2, name, event_flag, __VA_ARGS__)
+#define COCORO_SYSCALL3(name, event_flag, ...) \
+    COCORO_SYSCALLx(3, name, event_flag, __VA_ARGS__)
+
+COCORO_SYSCALL2(read, EPOLLIN, void *, buf, size_t, count);
+COCORO_SYSCALL2(write, EPOLLOUT, const void *, buf, size_t, count);
+COCORO_SYSCALL3(recv, EPOLLIN, void *, buf, size_t, len, int, flags);
+COCORO_SYSCALL3(send, EPOLLOUT, const void *, buf, size_t, len, int, flags);
 
 void cocoro_exit()
 {

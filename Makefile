@@ -5,21 +5,19 @@ LDFLAGS = -Wl,-rpath="$(CURDIR)" -L. -lcocoro
 CURDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 OUT ?= build
 LIBCOCORO = libcocoro.so
-TEST_1 = $(OUT)/test_1
+TESTS = $(OUT)/simple $(OUT)/tinync
 
 GIT_HOOKS := .git/hooks/applied
 LIB_OBJ = $(OUT)/coro.o $(OUT)/event.o $(OUT)/switch.o
-TEST_1_OBJ = $(OUT)/test_1.o
 
 all: CFLAGS += -O3 -g
-all: $(GITHOOKS) $(LIBCOCORO) $(TEST_1)
-
+all: $(GITHOOKS) $(LIBCOCORO) $(TESTS)
 
 $(GIT_HOOKS):
 	@scripts/install-git-hooks
 	@echo
 
-$(TEST_1): $(LIBCOCORO) $(TEST_1_OBJ)
+$(TESTS): %: %.o $(LIBCOCORO)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
 $(LIBCOCORO): $(LIB_OBJ)
